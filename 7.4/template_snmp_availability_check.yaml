@@ -1,0 +1,59 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: 6d1fcba41ff2448f83e53c72152246b9
+      template: 'SNMP Availability Check'
+      name: 'SNMP Availability Check'
+      description: 'Simple SNMP Interface check.'
+      vendor:
+        name: databloat
+        version: 7.4-1
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 66fa2602af534be0a52baafa47e2c8ea
+          name: 'Hostname of SNMP Agent'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.5.0
+          key: snmp.hostname
+          delay: 1h
+          value_type: CHAR
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 31a9656d9e23437aa88d5a35d4765e24
+              expression: 'change(/SNMP Availability Check/snmp.hostname) and length(last(/SNMP Availability Check/snmp.hostname))>0'
+              name: 'SNMP System name has changed'
+              event_name: 'SNMP System name has changed (new name: {ITEM.VALUE})'
+              priority: INFO
+              manual_close: 'YES'
+        - uuid: bf490e0451d443a882bd7e1832d26fa8
+          name: 'SNMP availability'
+          type: INTERNAL
+          key: 'zabbix[host,snmp,available]'
+          description: 'Used for monitoring the availability status of the snmp service.'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 17c4ea68b5a9496d931b55102783c51c
+              expression: 'max(/SNMP Availability Check/zabbix[host,snmp,available],{$AGENT.TIMEOUT})=0'
+              name: 'SNMP on {HOST.NAME} is unreachable'
+              priority: AVERAGE
+      tags:
+        - tag: class
+          value: software
+        - tag: target
+          value: snmp-agent
+      macros:
+        - macro: '{$AGENT.TIMEOUT}'
+          value: 3m
+          description: 'Timeout after which agent is considered unavailable.'
